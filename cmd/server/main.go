@@ -7,8 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/Rugved7/authforge/internal/auth"
 	"github.com/Rugved7/authforge/internal/config"
 	apphttp "github.com/Rugved7/authforge/internal/http"
+	"github.com/Rugved7/authforge/internal/user"
 )
 
 func main() {
@@ -24,8 +26,12 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGINT)
 
+	userRepo := user.NewMemoryRepository()
+	authService := auth.NewService(userRepo)
+	authHandler := auth.NewHandler(authService)
+
 	// create router
-	router := apphttp.NewRouter()
+	router := apphttp.NewRouter(authHandler)
 
 	// create http server
 	server := apphttp.NewServer(cfg.ServicePort, router)
