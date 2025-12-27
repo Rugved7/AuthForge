@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/Rugved7/authforge/internal/auth"
+	"github.com/Rugved7/authforge/internal/cache"
 	"github.com/Rugved7/authforge/internal/config"
 	apphttp "github.com/Rugved7/authforge/internal/http"
 	"github.com/Rugved7/authforge/internal/user"
@@ -43,8 +44,11 @@ func main() {
 	// HTTP handler
 	authHandler := auth.NewHandler(authService)
 
+	// cache
+	tokenCache := cache.NewMemoryCache()
+
 	// create router
-	router := apphttp.NewRouter(authHandler, tokenManager)
+	router := apphttp.NewRouter(authHandler, tokenManager, tokenCache)
 
 	// create server
 	server := apphttp.NewServer(cfg.ServicePort, router)

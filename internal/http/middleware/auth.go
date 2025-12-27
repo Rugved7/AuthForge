@@ -5,12 +5,14 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Rugved7/authforge/internal/auth"
+	"github.com/Rugved7/authforge/internal/cache"
 	contextkeys "github.com/Rugved7/authforge/internal/http/contextKeys"
 )
 
-func AuthMiddleware(tokenManager *auth.TokenManager) func(http.Handler) http.Handler {
+func AuthMiddleware(tokenManager *auth.TokenManager, tokenCache cache.Cache) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -26,7 +28,18 @@ func AuthMiddleware(tokenManager *auth.TokenManager) func(http.Handler) http.Han
 			}
 
 			tokenStr := parts[1]
+			cacheKey := "access:" + tokenStr
 
+			// try cache first
+			if cached, ok := tokenCache.Get(r.Context(), cacheKey); ok {
+				// cached format -> userID:role
+				parts := strings.SplitN(cached, ":", 2)
+				ctx := context.WithValue(r.Context(), contextkeys.UserIDKey, parts[0])
+				ctx = context.WithValue(ctx, contextkeys.RoleKey, parts[1])
+				next.ServeHTTP(w, r.WithContext(ctx))
+			}
+
+			// fallback to JWT verfication
 			_, claims, err := tokenManager.ParseToken(tokenStr)
 			if err != nil {
 				http.Error(w, "invalid or expired token", http.StatusUnauthorized)
@@ -50,6 +63,14 @@ func AuthMiddleware(tokenManager *auth.TokenManager) func(http.Handler) http.Han
 				http.Error(w, "invalid token role", http.StatusUnauthorized)
 				return
 			}
+
+			// Store in cache
+			tokenCache.Set(
+				r.Context(),
+				cacheKey,
+				userID+":"+role,
+				5*time.Minute,
+			)
 
 			ctx := context.WithValue(r.Context(), contextkeys.UserIDKey, userID)
 			ctx = context.WithValue(ctx, contextkeys.RoleKey, role)

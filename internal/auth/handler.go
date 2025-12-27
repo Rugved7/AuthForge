@@ -124,3 +124,9 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }
+
+// RBAC...AdminPing() allow only Admin
+func (h *Handler) AdminPing(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`"status":"admin ok"`))
+}

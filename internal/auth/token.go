@@ -1,4 +1,4 @@
-// package auth deals with the authentication and authorization logic
+// Package auth deals with the authentication and authorization logic
 package auth
 
 import (
