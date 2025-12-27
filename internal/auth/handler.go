@@ -3,6 +3,8 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+
+	contextkeys "github.com/Rugved7/authforge/internal/http/contextKeys"
 )
 
 type Handler struct {
@@ -31,6 +33,14 @@ type authResponse struct {
 	Role         string `json:"role"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type refreshResponse struct {
+	AccessToken string `json:"access_token"`
 }
 
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +90,37 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: result.RefreshToken,
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(contextkeys.UserIDKey)
+	role := r.Context().Value(contextkeys.RoleKey)
+
+	resp := map[string]interface{}{
+		"user_id": userID,
+		"role":    role,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req refreshRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	accessToken, err := h.service.Refresh(r.Context(), req.RefreshToken)
+	if err != nil {
+		http.Error(w, "invalid refresh token", http.StatusUnauthorized)
+		return
+	}
+
+	resp := refreshResponse{AccessToken: accessToken}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }

@@ -44,7 +44,7 @@ func main() {
 	authHandler := auth.NewHandler(authService)
 
 	// create router
-	router := apphttp.NewRouter(authHandler)
+	router := apphttp.NewRouter(authHandler, tokenManager)
 
 	// create server
 	server := apphttp.NewServer(cfg.ServicePort, router)

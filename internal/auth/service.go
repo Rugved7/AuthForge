@@ -91,3 +91,27 @@ func (s *Service) Login(ctx context.Context, email, password string) (*AuthResul
 		RefreshToken: refreshToken,
 	}, nil
 }
+
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (string, error) {
+	_, claims, err := s.tokenManager.ParseToken(refreshToken)
+	if err != nil {
+		return "", ErrInvalidCredentials
+	}
+
+	// Ensure refresh token
+	if t, ok := claims["type"].(string); !ok || t != "refresh" {
+		return "", ErrInvalidCredentials
+	}
+
+	userID, ok := claims["sub"].(string)
+	if !ok {
+		return "", ErrInvalidCredentials
+	}
+
+	u, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		return "", ErrInvalidCredentials
+	}
+
+	return s.tokenManager.GenerateAccessToken(u.ID, string(u.Role))
+}

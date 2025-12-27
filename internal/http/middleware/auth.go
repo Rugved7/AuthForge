@@ -7,13 +7,7 @@ import (
 	"strings"
 
 	"github.com/Rugved7/authforge/internal/auth"
-)
-
-type contextKey string
-
-const (
-	ContextUserIDKey contextKey = "userID"
-	ContextRoleKey   contextKey = "role"
+	contextkeys "github.com/Rugved7/authforge/internal/http/contextKeys"
 )
 
 func AuthMiddleware(tokenManager *auth.TokenManager) func(http.Handler) http.Handler {
@@ -57,8 +51,8 @@ func AuthMiddleware(tokenManager *auth.TokenManager) func(http.Handler) http.Han
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), ContextUserIDKey, userID)
-			ctx = context.WithValue(ctx, ContextRoleKey, role)
+			ctx := context.WithValue(r.Context(), contextkeys.UserIDKey, userID)
+			ctx = context.WithValue(ctx, contextkeys.RoleKey, role)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
