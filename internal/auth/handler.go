@@ -26,9 +26,11 @@ type loginRequest struct {
 }
 
 type authResponse struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	Role         string `json:"role"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
@@ -38,21 +40,23 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.Signup(r.Context(), req.Email, req.Password)
+	result, err := h.service.Signup(r.Context(), req.Email, req.Password)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	resp := authResponse{
-		ID:    user.ID,
-		Email: user.Email,
-		Role:  string(user.Role),
+		ID:           result.User.ID,
+		Email:        result.User.Email,
+		Role:         string(result.User.Role),
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -62,18 +66,20 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.Login(r.Context(), req.Email, req.Password)
+	result, err := h.service.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
 	resp := authResponse{
-		ID:    user.ID,
-		Email: user.Email,
-		Role:  string(user.Role),
+		ID:           result.User.ID,
+		Email:        result.User.Email,
+		Role:         string(result.User.Role),
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }

@@ -26,14 +26,27 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGINT)
 
+	// Dependency wiring
+	// Repository
 	userRepo := user.NewMemoryRepository()
-	authService := auth.NewService(userRepo)
+
+	// Token Manager
+	tokenManager := auth.NewTokenManager(
+		cfg.JwtSecret,
+		cfg.AccessTokenTTL,
+		cfg.RefreshTokenTTL,
+	)
+
+	// Auth service
+	authService := auth.NewService(userRepo, tokenManager)
+
+	// HTTP handler
 	authHandler := auth.NewHandler(authService)
 
 	// create router
 	router := apphttp.NewRouter(authHandler)
 
-	// create http server
+	// create server
 	server := apphttp.NewServer(cfg.ServicePort, router)
 
 	// start server

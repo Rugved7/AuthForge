@@ -24,6 +24,19 @@ func NewTokenManager(secret string, accessTTL, refreshTTL time.Duration) *TokenM
 	}
 }
 
+func (tm *TokenManager) GenerateAccessToken(userID string, role string) (string, error) {
+	claims := jwt.MapClaims{
+		"sub":  userID,
+		"role": role,
+		"exp":  time.Now().Add(tm.accessTokenTTL).Unix(),
+		"iat":  time.Now().Unix(),
+		"type": "access",
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(tm.secret)
+}
+
 func (tm *TokenManager) GenerateRefreshToken(userID string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":  userID,

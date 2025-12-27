@@ -9,19 +9,27 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrInvalidCredentials = errors.New("Invalid credentials: check email or password")
+var ErrInvalidCredentials = errors.New("invalid credentials: check email or password")
 
 type Service struct {
-	users user.Repository
+	users        user.Repository
+	tokenManager *TokenManager
 }
 
-func NewService(users user.Repository) *Service {
+type AuthResult struct {
+	User         *user.User
+	AccessToken  string
+	RefreshToken string
+}
+
+func NewService(users user.Repository, tokenManager *TokenManager) *Service {
 	return &Service{
-		users: users,
+		users:        users,
+		tokenManager: tokenManager,
 	}
 }
 
-func (s *Service) Signup(ctx context.Context, email, password string) (*user.User, error) {
+func (s *Service) Signup(ctx context.Context, email, password string) (*AuthResult, error) {
 	hashedPassword, err := HashPassword(password)
 	if err != nil {
 		return nil, err
@@ -39,10 +47,25 @@ func (s *Service) Signup(ctx context.Context, email, password string) (*user.Use
 	if err := s.users.Create(ctx, u); err != nil {
 		return nil, err
 	}
-	return u, nil
+
+	accessToken, err := s.tokenManager.GenerateAccessToken(u.ID, string(u.Role))
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.tokenManager.GenerateRefreshToken(u.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AuthResult{
+		User:         u,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password string) (*user.User, error) {
+func (s *Service) Login(ctx context.Context, email, password string) (*AuthResult, error) {
 	u, err := s.users.FindByEmail(ctx, email)
 	if err != nil {
 		return nil, ErrInvalidCredentials
@@ -52,5 +75,19 @@ func (s *Service) Login(ctx context.Context, email, password string) (*user.User
 		return nil, ErrInvalidCredentials
 	}
 
-	return u, nil
+	accessToken, err := s.tokenManager.GenerateAccessToken(u.ID, string(u.Role))
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.tokenManager.GenerateRefreshToken(u.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AuthResult{
+		User:         u,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
